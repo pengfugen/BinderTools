@@ -21,18 +21,19 @@ public class PicService extends Service {
     private static String TAG = "BinderTools/PicService";
     ICallBack mRemote;
 
+
     public PicService() {
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
-        LogUtil.log(TAG, "onCreate========");
+        LogUtil.log(TAG, "onCreate--------");
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        LogUtil.log(TAG, "onStartCommand========");
+        LogUtil.log(TAG, "onStartCommand--------");
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -40,7 +41,7 @@ public class PicService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         // TODO: Return the communication channel to the service.
-        LogUtil.log(TAG, "onBind========pid:"+ Process.myPid()+" tid:"+Process.myTid());
+        LogUtil.log(TAG, "onBind--------pid:"+ Process.myPid()+" main thread tid:"+Process.myTid());
         return new PicServer();
     }
 
@@ -65,7 +66,7 @@ public class PicService extends Service {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
                 data = baos.toByteArray();
-                LogUtil.log(TAG, "getPicture(test_01)======== size:"+data.length);
+                // LogUtil.log(TAG, "getPicture(test_01)======== size:"+data.length);
                 picdata = new PicData(name, data.length, data);
             } else {
                 name = "test_02.png";
@@ -73,7 +74,7 @@ public class PicService extends Service {
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
                 data = baos.toByteArray();
-                LogUtil.log(TAG, "getPicture(test_02)======== size:"+data.length);
+                // LogUtil.log(TAG, "getPicture(test_02)======== size:"+data.length);
                 picdata = new PicData(name, data.length, data);
             }
             return picdata;
@@ -82,8 +83,21 @@ public class PicService extends Service {
         @Override
         public void setCallBack(ICallBack callback) throws RemoteException {
             mRemote = callback;
-            LogUtil.log(TAG, "setCallBack sucess! mRemote:"+mRemote);
-            myHandler.sendMessage(myHandler.obtainMessage(1));
+            LogUtil.log(TAG, "setCallBack success! mRemote:"+mRemote);
+            // 不是运行在主线程
+            LogUtil.log(TAG, "setCallBack--------pid:"+ Process.myPid()+" tid:"+Process.myTid()+" currentid:"+Thread.currentThread().getId());
+            /* 假如不使用myHandler的话，onStateChanged回调到Client时，Client的onStateChanged是运行在主线程*
+             * 为什么用myHandler的话回调给Client就不会运行在主线程呢？
+             */
+
+            //myHandler.sendMessage(myHandler.obtainMessage(1));
+            try {
+                Thread.sleep(12*1000);
+            } catch (InterruptedException e) {
+                LogUtil.log(TAG, "handleMessage InterruptedException e:"+e.getMessage());
+                e.printStackTrace();
+            }
+            mRemote.onStateChanged(1);
         }
     }
 
@@ -91,7 +105,13 @@ public class PicService extends Service {
         @Override
         public void handleMessage(Message msg) {
             try {
-                LogUtil.log(TAG, "handleMessage");
+                LogUtil.log(TAG, "handleMessage--------pid:"+ Process.myPid()+" tid:"+Process.myTid()+" currentid:"+Thread.currentThread().getId());
+                try {
+                    Thread.sleep(6*1000);
+                } catch (InterruptedException e) {
+                    LogUtil.log(TAG, "handleMessage InterruptedException e:"+e.getMessage());
+                    e.printStackTrace();
+                }
                 mRemote.onStateChanged(1);
             } catch (RemoteException e) {
                 e.printStackTrace();
